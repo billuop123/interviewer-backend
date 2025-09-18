@@ -1,0 +1,151 @@
+import {Router} from "express"
+import { prisma } from "../utils/prismaClient";
+import { sanitize } from "../utils/helperfunctions";
+import { logError } from "../utils/logger";
+export const companyRouter=Router()
+const companySettings = ["sendEmailNotification", "enableCoverLetter"];
+const systemSettings = ["allowJobPosts", "enableFeaturedJobs"];
+companyRouter.post('/',async (req,res)=>{
+    try {
+        const { name, email, website, logo, postlimit, blacklisted } = req.body;
+    
+        if (!email || typeof email !== "string" || email.trim() === "") {
+          res.status(400).json({ error: "Email is required" });
+          return;
+        }
+    
+        const existingCompany = await prisma.companies.findUnique({
+          where: { email },
+        });
+    
+        if (existingCompany) {
+          res.status(400).json({ error: "Email already in use" });
+          return;
+        }
+    
+        const company = await prisma.companies.create({
+          data: {
+            name,
+            email,
+            website,
+            logo,
+            postlimit,
+            blacklisted,
+          },
+        });
+        systemSettings.map(async (item) => {
+          await prisma.companysettings.create({
+            data: {
+              companyId: company.id,
+              key: item,
+              isSystemSetting: true,
+            },
+          });
+        });
+        companySettings.map(async (item) => {
+          await prisma.companysettings.create({
+            data: {
+              companyId: company.id,
+              key: item,
+              isSystemSetting: false,
+            },
+          });
+        });
+        const results = sanitize(company);
+         res.status(201).json(results);
+      } catch (err: any) {
+        await logError("createCompany", err.message);
+        res.status(500).json({ error: "Internal server error" });
+      }
+})
+
+
+companyRouter.get('/',async (req,res)=>{
+    try {
+        const limit = parseInt(req.query.limit as string) || 10;
+        const page = parseInt(req.query.page as string) || 1;
+        const skip = (page - 1) * limit;
+    
+        const companies = await prisma.companies.findMany({
+          where: { deleted: null },
+          skip,
+          take: limit,
+        });
+    
+        const results = sanitize(companies);
+        res.json(results);
+      } catch (err: any) {
+        await logError("getAllCompanies", err.message);
+        res.status(500).json({ error: "Internal server error" });
+      }
+})
+companyRouter.get('/:companyId',async(req,res)=>{
+    try {
+        const companyId = req.params.companyId;
+    
+        const company = await prisma.companies.findUnique({
+          where: { id:companyId },
+        });
+    
+        if (!company || company.deleted) {
+          res.status(404).json({ error: "Company not found" });
+          return;
+        }
+    
+        const results = sanitize(company);
+    
+        res.json(results);
+      } catch (err: any) {
+        await logError("getCompanyById", err.message);
+        res.status(500).json({ error: "Internal server error" });
+      }
+})
+companyRouter.put('/:companyId',async(req,res)=>{
+    try {
+        const companyId = req.params.companyId;
+        const { name, email, website, logo, postlimit, blacklisted } = req.body;
+    
+        const existingCompany = await prisma.companies.findUnique({
+          where: { email },
+        });
+    
+        if (existingCompany) {
+          res.status(400).json({ error: "Email already in use" });
+          return;
+        }
+    
+        const updated = await prisma.companies.update({
+          where: { id:companyId },
+          data: {
+            name,
+            email,
+            website,
+            logo,
+            postlimit,
+            blacklisted,
+            updated: new Date(),
+          },
+        });
+    
+        const results = sanitize(updated);
+        res.json(results);
+      } catch (err: any) {
+        await logError("updateCompany", err.message);
+        res.status(500).json({ error: "Internal server error" });
+      }
+})
+companyRouter.delete('/:companyId',async(req,res)=>{
+    try {
+    
+        const companyId = req.params.companyId;
+        await prisma.companies.update({
+          where: { id:companyId },
+          data: { deleted: new Date() },
+        });
+    
+        res.json({ message: "Company soft-deleted successfully" });
+      } catch (err: any) {
+        await logError("softDeleteCompany", err.message);
+        res.status(500).json({ error: "Internal server error" });
+      }
+})
