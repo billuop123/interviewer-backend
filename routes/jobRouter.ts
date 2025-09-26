@@ -84,8 +84,8 @@ jobRouter.post('/',async (req,res)=>{
             benefits,
             applicationUrl:applicationurl,
             contactemail,
-            applicationdeadline,
-            experiencerequired,
+            applicationdeadline: applicationdeadline ? new Date(applicationdeadline) : null,
+            experiencerequired:Number(experiencerequired),
             educationlevel,
             skills,
             isfeatured,
@@ -190,7 +190,7 @@ jobRouter.put('/:jobId',async(req,res)=>{
         benefits,
         applicationUrl:applicationurl,
         contactemail,
-        applicationdeadline,
+        applicationdeadline: applicationdeadline ? new Date(applicationdeadline) : null,
         experiencerequired,
         educationlevel,
         skills,
@@ -235,6 +235,57 @@ jobRouter.delete('/:jobId',async(req,res)=>{
     res.status(500).json({ error: 'Internal server error' });
   }
 })
+jobRouter.get('/company/:companyId',async (req,res)=>{
+  try {
+    const companyId = req.params.companyId;
+    
+    if (!companyId) {
+      res.status(400).json({ error: 'Company ID is required' });
+      return;
+    }
+
+    const jobs = await prisma.jobs.findMany({
+      where: { 
+        companyid: companyId,
+        deleted: null 
+      },
+      orderBy: { created: 'desc' },
+      include: {
+        company: {
+          select: {
+            id: true,
+            name: true,
+            logo: true,
+          },
+        },
+        jobtype: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        postedBy: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+        _count: {
+          select: {
+            applications: true,
+          },
+        },
+      },
+    });
+
+    const result = sanitize(jobs);
+    res.json(result);
+  } catch (err: any) {
+    await logError('getJobsByCompany', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+})
+
 jobRouter.get('/',async (req,res)=>{
   try {
     

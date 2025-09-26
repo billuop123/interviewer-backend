@@ -10,8 +10,12 @@ import { jobRouter } from "./routes/jobRouter"
 import { companyRouter } from "./routes/company"
 import { applicationRouter } from "./routes/application"
 import { authMiddleware } from "./middleware/authMiddleware"
+import cors from "cors"
 const app=express()
 app.use(express.json())
+app.use(cors({
+    origin: process.env.FRONTEND_URL,
+}))
 app.post('/text',authMiddleware,(req,res)=>{
 return res.status(200).json({
     message:"Reached"

@@ -38,10 +38,10 @@ router.post('/signin',async (req,res)=>{
                 message:"Invalid credentials"
             })
         }
-        const isPasswordvalid=bcrypt.compare(password,user.password)
+        const isPasswordvalid=await bcrypt.compare(password,user.password)
         if(!isPasswordvalid){
-            res.status(401).json({
-                message:"Invalid credentails"
+            return res.status(401).json({
+                message:"Invalid credentials"
             })
         }
         const token=jwt.sign({

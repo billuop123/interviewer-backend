@@ -65,12 +65,58 @@ companyRouter.get('/',async (req,res)=>{
         const limit = parseInt(req.query.limit as string) || 10;
         const page = parseInt(req.query.page as string) || 1;
         const skip = (page - 1) * limit;
+        const userId = req.query.userId as string;
     
-        const companies = await prisma.companies.findMany({
-          where: { deleted: null },
-          skip,
-          take: limit,
-        });
+        let companies:any[];
+        
+        // If userId is provided, filter companies by user
+        if (userId) {
+          // First get the user to find their companyId
+          const user = await prisma.users.findUnique({
+            where: { id: userId },
+            select: { companyId: true }
+          });
+          
+          if (!user || !user.companyId) {
+            // User has no company, return empty array
+            companies = [];
+          } else {
+            // Get the company for this user
+            companies = await prisma.companies.findMany({
+              where: { 
+                id: user.companyId,
+                deleted: null 
+              },
+              skip,
+              take: limit,
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true
+                  }
+                }
+              }
+            });
+          }
+        } else {
+          // No userId provided, get all companies
+          companies = await prisma.companies.findMany({
+            where: { deleted: null },
+            skip,
+            take: limit,
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true
+                }
+              }
+            }
+          });
+        }
     
         const results = sanitize(companies);
         res.json(results);

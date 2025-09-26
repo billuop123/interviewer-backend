@@ -125,6 +125,7 @@ model jobs{
   responsibilities String?
   benefits String?
   applicationUrl String?
+ 
   contactemail        String?   @db.VarChar(255)
   applicationdeadline DateTime?
   experiencerequired  Int?
@@ -156,6 +157,7 @@ model applications{
   id String @id @default(uuid())
   jobid               String
   userid              String
+  videolink String?
   coverletter         String?
   relevancescore      Decimal?  @db.Decimal(3, 2)
   relevancecomment    String?

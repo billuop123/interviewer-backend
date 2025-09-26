@@ -54,34 +54,67 @@ userDetailsRouter.post("/",async (req,res)=>{
                         deleted:null
                     }
                 })
-                if(existingDetails){
-                    return res.status(400).json({
-                        message:"user details already exists"
-                    })
-                }
+                
                 let resumelink="";
                 const resumeFile=Array.isArray(files.resume)?files.resume[0]:files.resume
                 if(resumeFile && resumeFile.filepath){
                     resumelink=await uploadResume(resumeFile.filepath,`resume_${userId}`) as string
                 }
-                const details = await prisma.userdetails.create({
-                    data: {
-                      userId: user.id,
-                      experience: parseInt(experience),
-                      phone,
-                      resumelink,
-                      skills, 
-                      location,
-                      bio,
-                      linkedin,
-                      portfolio,
-                      github,
-                      expected_salary : parseInt(expected_salary),
-                      availability,
-                    },
-                  });
+                
+                let details;
+                if(existingDetails){
+                    // Update existing user details
+                    details = await prisma.userdetails.update({
+                        where: {
+                            id: existingDetails.id
+                        },
+                        data: {
+                            experience: parseInt(experience),
+                            phone,
+                            resumelink: resumelink || existingDetails.resumelink, // Keep existing if no new file
+                            skills, 
+                            location,
+                            bio,
+                            linkedin,
+                            portfolio,
+                            github,
+                            expected_salary : parseInt(expected_salary),
+                            availability,
+                        },
+                    })
+                } else {
+                    // Create new user details
+                    if(phone){
+
+                        const existingPhone=await prisma.userdetails.findUnique({
+                            where:{
+                                phone
+                            }
+                        })
+                        if(existingPhone){
+                            return res.status(400).json({
+                                message:"Phone number  is already present"
+                            })
+                        }
+                    }
+                    details = await prisma.userdetails.create({
+                        data: {
+                          userId: user.id,
+                          experience: parseInt(experience),
+                          phone,
+                          resumelink,
+                          skills, 
+                          location,
+                          bio,
+                          linkedin,
+                          portfolio,
+                          github,
+                          expected_salary : parseInt(expected_salary),
+                          availability,
+                        },
+                    })
+                };
                 const result=sanitize(details)
-                console.log("This is called")
                 return res.status(200).json({
                     result
                 })
@@ -95,7 +128,7 @@ userDetailsRouter.post("/",async (req,res)=>{
     }
 })
 
-userDetailsRouter.post('/getuserdetails/:userId',async(req,res)=>{
+userDetailsRouter.get('/getuserdetails/:userId',async(req,res)=>{
     try{
         const userId=req.params.userId
         if(!userId){
@@ -231,3 +264,39 @@ userDetailsRouter.delete('/deleteuserdetail/:userId',async (req,res)=>{
         })
     }
 })
+// // Upload resume endpoint
+// userDetailsRouter.post('/upload-resume', async (req, res) => {
+//     try {
+//         console.log("Resume upload endpoint hit")
+//         const form = formidable({ multiples: false })
+//         form.parse(req, async (err: any, fields: any, files: any) => {
+//             if (err) {
+//                 console.error("Formidable error:", err)
+//                 return res.status(400).json({ message: "Error parsing file" })
+//             }
+            
+//             console.log("Files received:", files)
+            
+//             const resume = Array.isArray(files.resume) ? files.resume[0] : files.resume
+//             if (!resume) {
+//                 console.log("No resume file found")
+//                 return res.status(400).json({ message: "No resume file provided" })
+//             }
+            
+//             console.log("Resume file:", resume.originalFilename, resume.size)
+            
+//             try {
+//                 const resumeUrl = await uploadResume(resume.filepath, `resume_${Date.now()}`) as string
+//                 console.log("Resume uploaded successfully:", resumeUrl)
+//                 return res.json({ resumeUrl })
+//             } catch (uploadError: any) {
+//                 console.error("Upload error:", uploadError)
+//                 return res.status(500).json({ message: "Failed to upload resume" })
+//             }
+//         })
+//     } catch (error: any) {
+//         console.error("Resume upload endpoint error:", error)
+//         await logError('uploadResume', error.message)
+//         return res.status(500).json({ message: "Internal server error" })
+//     }
+// })

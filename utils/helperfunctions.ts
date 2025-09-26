@@ -29,3 +29,16 @@ export async  function uploadResume(localFilePath:string,publicId?:string){
         console.error("Cloudinary upload error",e.message)
     }
 }
+export async  function uploadVideos(localFilePath:string,publicId?:string){
+    try{
+    const result = await cloudinary.uploader.upload(localFilePath, {
+        resource_type: "video",
+        folder: "resumes",
+        publicId,
+      });
+      return result.secure_url;
+    }catch(e:any){
+        console.error("Cloudinary upload error",e.message)
+    }
+}
+
