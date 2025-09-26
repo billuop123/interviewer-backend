@@ -1,8 +1,16 @@
 FROM oven/bun:alpine
 WORKDIR /app
 
+# Copy package files
+COPY package.json bun.lockb* ./
+
+# Install dependencies
+RUN bun install --legacy-peer-deps
+
+# Copy app code
 COPY . .
 
+# Generate Prisma client
 RUN bunx prisma generate
 
 EXPOSE 3000
