@@ -16,4 +16,4 @@ RUN bunx prisma generate
 EXPOSE 3000
 
 # Start the app
-CMD ["bun", "run", "bin.ts"]
+CMD ["bun", "run", "index.ts"]
