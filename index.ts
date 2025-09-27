@@ -34,6 +34,4 @@ app.use('/api/v1/companysettings',authMiddleware,companySettingsRouter)
 app.use('/api/v1/company',authMiddleware,companyRouter)
 app.use('/api/v1/job',authMiddleware,jobRouter)
 app.use('/api/v1/application',authMiddleware,applicationRouter)
-app.listen(process.env.PORT,()=>{
-    console.log(`Server is listening on port ${process.env.PORT}`)
-})
+app.listen(3000, '0.0.0.0', () => console.log('Server running on 0.0.0.0'));
