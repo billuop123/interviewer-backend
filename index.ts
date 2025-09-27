@@ -14,7 +14,9 @@ import cors from "cors"
 const app=express()
 app.use(express.json())
 app.use(cors({
-    origin: process.env.FRONTEND_URL,
+    origin: ['interviewer-frontend-lm5m.vercel.app'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
 }))
 app.post('/text',authMiddleware,(req,res)=>{
 return res.status(200).json({
