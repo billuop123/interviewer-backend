@@ -17,6 +17,7 @@ app.use(cors({
     origin: ['interviewer-frontend-lm5m.vercel.app'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials:true
 }))
 app.post('/text',authMiddleware,(req,res)=>{
 return res.status(200).json({
