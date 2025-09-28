@@ -726,6 +726,9 @@ Provide a fair, objective assessment based on the candidate's demonstrated abili
 })
 applicationRouter.post('/:applicationId/submit',async(req,res)=>{
   try{
+    console.log('Submit endpoint hit - Content-Type:', req.headers['content-type'])
+    console.log('Submit endpoint hit - Content-Length:', req.headers['content-length'])
+    
     const applicationId=req.params.applicationId  
     const form=formidable({multiples:false})
     form.parse(req,async(err:any,fields:any,files:any)=>{
@@ -735,10 +738,17 @@ applicationRouter.post('/:applicationId/submit',async(req,res)=>{
       const resumeText=Array.isArray(fields.resume)?fields.resume[0]:fields.resumeText
       const messageHistory=Array.isArray(fields.messageHistory)?fields.messageHistory[0]:fields.messageHistory
       const video=Array.isArray(files.video)?files.video[0]:files.video
-      if(!resumeText || !messageHistory || !video){
-        return res.status(400).json({message:"All fields are required"})
+      
+      // Make video optional - only require resumeText and messageHistory
+      if(!resumeText || !messageHistory){
+        return res.status(400).json({message:"Resume text and message history are required"})
       }
-      const videoLink=await uploadVideos(video.filepath,`video_${applicationId}`) as string
+      
+      // Upload video only if provided
+      let videoLink = null
+      if(video && video.filepath){
+        videoLink = await uploadVideos(video.filepath,`video_${applicationId}`) as string
+      }
       const application=await prisma.applications.findUnique({
         where:{id:applicationId},
         include:{
@@ -770,7 +780,7 @@ applicationRouter.post('/:applicationId/submit',async(req,res)=>{
       const updatedApplication=await prisma.applications.update({
         where:{id:applicationId},
         data:{
-          videolink:videoLink
+          videolink:videoLink // Will be null if no video was provided
         }
       })
       const SystemPrompt = `You are an expert hiring manager evaluating a candidate's interview performance and resume for job suitability.

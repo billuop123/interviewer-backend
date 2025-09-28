@@ -2,12 +2,14 @@ import {Router} from "express"
 import { prisma } from "../utils/prismaClient";
 import { sanitize } from "../utils/helperfunctions";
 import { logError } from "../utils/logger";
+import { authMiddleware } from "../middleware/authMiddleware";
 export const companyRouter=Router()
 const companySettings = ["sendEmailNotification", "enableCoverLetter"];
 const systemSettings = ["allowJobPosts", "enableFeaturedJobs"];
-companyRouter.post('/',async (req,res)=>{
+companyRouter.post('/', authMiddleware, async (req,res)=>{
     try {
         const { name, email, website, logo, postlimit, blacklisted } = req.body;
+        const userId = req.userId; // Get user ID from auth middleware
     
         if (!email || typeof email !== "string" || email.trim() === "") {
           res.status(400).json({ error: "Email is required" });
@@ -33,6 +35,14 @@ companyRouter.post('/',async (req,res)=>{
             blacklisted,
           },
         });
+        
+        // Associate the user with the company they created
+        if (userId) {
+          await prisma.users.update({
+            where: { id: userId },
+            data: { companyId: company.id }
+          });
+        }
         systemSettings.map(async (item) => {
           await prisma.companysettings.create({
             data: {
@@ -60,12 +70,13 @@ companyRouter.post('/',async (req,res)=>{
 })
 
 
-companyRouter.get('/',async (req,res)=>{
+companyRouter.get('/', authMiddleware, async (req,res)=>{
     try {
         const limit = parseInt(req.query.limit as string) || 10;
         const page = parseInt(req.query.page as string) || 1;
         const skip = (page - 1) * limit;
-        const userId = req.query.userId as string;
+        const userId = req.userId; // Use authenticated user's ID
+        
     
         let companies:any[];
         
@@ -151,8 +162,12 @@ companyRouter.put('/:companyId',async(req,res)=>{
         const companyId = req.params.companyId;
         const { name, email, website, logo, postlimit, blacklisted } = req.body;
     
-        const existingCompany = await prisma.companies.findUnique({
-          where: { email },
+        // Check if email is already in use by another company
+        const existingCompany = await prisma.companies.findFirst({
+          where: { 
+            email,
+            id: { not: companyId }
+          },
         });
     
         if (existingCompany) {

@@ -13,6 +13,9 @@ COPY . .
 # Generate Prisma client
 RUN bunx prisma generate
 
+# Set environment variables for large file handling
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
 EXPOSE 3000
 
 # Start the app

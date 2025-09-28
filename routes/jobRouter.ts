@@ -105,7 +105,7 @@ jobRouter.post('/',async (req,res)=>{
           })
         }
     
-        res.json(sanitize(job));
+        res.status(201).json(sanitize(job));
         
       } catch (err: any) {
         await logError('createJob', err.message);
@@ -123,6 +123,28 @@ jobRouter.get('/:jobId',async (req,res)=>{
     
         const job = await prisma.jobs.findFirst({
           where: { id: jobId, deleted: null },
+          include: {
+            company: {
+              select: {
+                id: true,
+                name: true,
+                logo: true,
+                website: true,
+              },
+            },
+            jobtype: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            postedBy: {
+              select: {
+                id: true,
+                email: true,
+              },
+            },
+          },
         });
     
         if (!job) {
@@ -303,6 +325,8 @@ jobRouter.get('/',async (req,res)=>{
           select: {
             id: true,
             name: true,
+            logo: true,
+            website: true,
           },
         },
         jobtype: {
