@@ -62,6 +62,21 @@ userDetailsRouter.post("/",async (req,res)=>{
                 }
                 
                 let details;
+                // Check for phone number conflicts (for both create and update)
+                if(phone){
+                    const existingPhone=await prisma.userdetails.findUnique({
+                        where:{
+                            phone
+                        }
+                    })
+                    // If phone exists and it's not the current user's phone
+                    if(existingPhone && existingPhone.userId !== user.id){
+                        return res.status(400).json({
+                            message:"Phone number is already in use by another user"
+                        })
+                    }
+                }
+
                 if(existingDetails){
                     // Update existing user details
                     details = await prisma.userdetails.update({
@@ -84,19 +99,6 @@ userDetailsRouter.post("/",async (req,res)=>{
                     })
                 } else {
                     // Create new user details
-                    if(phone){
-
-                        const existingPhone=await prisma.userdetails.findUnique({
-                            where:{
-                                phone
-                            }
-                        })
-                        if(existingPhone){
-                            return res.status(400).json({
-                                message:"Phone number  is already present"
-                            })
-                        }
-                    }
                     details = await prisma.userdetails.create({
                         data: {
                           userId: user.id,
@@ -122,6 +124,15 @@ userDetailsRouter.post("/",async (req,res)=>{
         })
     }catch(e:any){
         await logError("createUserDetails",e.message)
+        
+        // Handle Prisma unique constraint errors
+        if(e.code === 'P2002'){
+            const field = e.meta?.target?.[0] || 'field'
+            return res.status(400).json({
+                message: `${field} is already in use`
+            })
+        }
+        
         res.status(500).json({
             error:"Internal server error"
         })

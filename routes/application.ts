@@ -358,7 +358,7 @@ applicationRouter.get("/job/:jobId", async (req, res) => {
 applicationRouter.post("/chat/:applicationId", async (req, res) => {
   try {
     const applicationId=req.params.applicationId
-    const {resumeText,message}=req.body
+    const {resumeText,message,messageHistory}=req.body
     if(!applicationId){
       return res.status(400).json({
         message:"The application Id is required"
@@ -414,7 +414,7 @@ applicationRouter.post("/chat/:applicationId", async (req, res) => {
     // } = application;
     
  
-    const outputText=await runOpenAiPrompt([{ role: "user", content: message }],resumeText,application)
+    const outputText=await runOpenAiPrompt(messageHistory || [{ role: "user", content: message }],resumeText,application)
     return res.json({ llmResponse:outputText });
   } catch (e: any) {
     await logError('chat',e.message)
@@ -425,7 +425,7 @@ applicationRouter.post("/chat/:applicationId", async (req, res) => {
 applicationRouter.post("/chat/stream/:applicationId", async (req, res) => {
   try {
     const applicationId = req.params.applicationId;
-    const { resumeText, message } = req.body;
+    const { resumeText, message, messageHistory } = req.body;
     
     if (!applicationId) {
       return res.status(400).json({
@@ -473,7 +473,7 @@ applicationRouter.post("/chat/stream/:applicationId", async (req, res) => {
     res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
 
     // Stream the LLM response
-    await streamOpenAiResponse([{ role: "user", content: message }], resumeText, application, res);
+    await streamOpenAiResponse(messageHistory || [{ role: "user", content: message }], resumeText, application, res);
     
   } catch (e: any) {
     await logError('streamChat', e.message);
@@ -726,28 +726,53 @@ Provide a fair, objective assessment based on the candidate's demonstrated abili
 })
 applicationRouter.post('/:applicationId/submit',async(req,res)=>{
   try{
-    console.log('Submit endpoint hit - Content-Type:', req.headers['content-type'])
-    console.log('Submit endpoint hit - Content-Length:', req.headers['content-length'])
     
     const applicationId=req.params.applicationId  
-    const form=formidable({multiples:false})
+    const form=formidable({
+      multiples: false,
+      maxFileSize: 500 * 1024 * 1024, // 500MB limit for videos
+      maxFieldsSize: 10 * 1024 * 1024, // 10MB for text fields
+      keepExtensions: true,
+      allowEmptyFiles: false
+    })
     form.parse(req,async(err:any,fields:any,files:any)=>{
       if(err){
+        console.error('Formidable parsing error:', err.message)
         return res.status(400).json({message:"Error parsing data"})
       }
       const resumeText=Array.isArray(fields.resume)?fields.resume[0]:fields.resumeText
       const messageHistory=Array.isArray(fields.messageHistory)?fields.messageHistory[0]:fields.messageHistory
       const video=Array.isArray(files.video)?files.video[0]:files.video
-      
-      // Make video optional - only require resumeText and messageHistory
       if(!resumeText || !messageHistory){
         return res.status(400).json({message:"Resume text and message history are required"})
       }
       
-      // Upload video only if provided
       let videoLink = null
       if(video && video.filepath){
-        videoLink = await uploadVideos(video.filepath,`video_${applicationId}`) as string
+        try {
+
+          const videoSizeMB = video.size / (1024 * 1024)
+          if (videoSizeMB > 500) {
+            return res.status(400).json({
+              message: `Video file too large (${videoSizeMB.toFixed(1)}MB). Maximum size is 500MB.`
+            })
+          }
+          
+
+          const allowedTypes = ['video/webm', 'video/mp4', 'video/avi', 'video/mov', 'video/quicktime']
+          if (!allowedTypes.includes(video.mimetype)) {
+            return res.status(400).json({
+              message: `Invalid video format. Allowed formats: ${allowedTypes.join(', ')}`
+            })
+          }
+          
+          videoLink = await uploadVideos(video.filepath,`video_${applicationId}`) as string
+        } catch (uploadError: any) {
+          console.error('Video upload error:', uploadError.message)
+          return res.status(500).json({
+            message: `Video upload failed: ${uploadError.message}`
+          })
+        }
       }
       const application=await prisma.applications.findUnique({
         where:{id:applicationId},

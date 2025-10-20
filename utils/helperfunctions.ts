@@ -33,12 +33,19 @@ export async  function uploadVideos(localFilePath:string,publicId?:string){
     try{
     const result = await cloudinary.uploader.upload(localFilePath, {
         resource_type: "video",
-        folder: "resumes",
+        folder: "videos",
         publicId,
+        chunk_size: 6000000, // 6MB chunks for better video uploads
+        eager: [
+          { width: 300, height: 300, crop: "pad", audio_codec: "none" },
+          { width: 160, height: 100, crop: "crop", gravity: "south", audio_codec: "none" }
+        ],
+        eager_async: true
       });
       return result.secure_url;
     }catch(e:any){
         console.error("Cloudinary upload error",e.message)
+        throw new Error(`Video upload failed: ${e.message}`)
     }
 }
 

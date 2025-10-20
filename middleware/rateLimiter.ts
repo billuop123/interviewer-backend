@@ -39,7 +39,7 @@ export const authRateLimiter = rateLimit({
 // Very strict rate limiter for sensitive operations
 export const strictRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 requests per windowMs
+  max: 200, // Limit each IP to 10 requests per windowMs
   message: {
     error: 'Too many requests for this sensitive operation, please try again later.',
     retryAfter: '15 minutes'
@@ -57,7 +57,7 @@ export const strictRateLimiter = rateLimit({
 // Rate limiter for file uploads
 export const uploadRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 20, // Limit each IP to 20 uploads per hour
+  max: 50, // Limit each IP to 50 uploads per hour (increased for video uploads)
   message: {
     error: 'Too many file uploads from this IP, please try again later.',
     retryAfter: '1 hour'
