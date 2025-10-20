@@ -1,15 +1,1 @@
-# interviewer
-
-To install dependencies:
-
-```bash
-bun install
-```
-
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.2.4. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+This is an Ai Interviewer app rates your qualifications for the job on the scale of 1-10,including an interview. 
