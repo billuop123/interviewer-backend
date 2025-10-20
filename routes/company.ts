@@ -3,10 +3,11 @@ import { prisma } from "../utils/prismaClient";
 import { sanitize } from "../utils/helperfunctions";
 import { logError } from "../utils/logger";
 import { authMiddleware } from "../middleware/authMiddleware";
+import { isRecruiter } from "../middleware/rolesMiddleware";
 export const companyRouter=Router()
 const companySettings = ["sendEmailNotification", "enableCoverLetter"];
 const systemSettings = ["allowJobPosts", "enableFeaturedJobs"];
-companyRouter.post('/', authMiddleware, async (req,res)=>{
+companyRouter.post('/', authMiddleware, isRecruiter,async (req,res)=>{
     try {
         const { name, email, website, logo, postlimit, blacklisted } = req.body;
         const userId = req.userId; // Get user ID from auth middleware
@@ -88,14 +89,16 @@ companyRouter.get('/', authMiddleware, async (req,res)=>{
             select: { companyId: true }
           });
           
-          if (!user || !user.companyId) {
+          if (!user ) {
             // User has no company, return empty array
-            companies = [];
+          return res.status(404).json({
+            message:"No user found for this id",
+            data:[]
+          })
           } else {
             // Get the company for this user
             companies = await prisma.companies.findMany({
               where: { 
-                id: user.companyId,
                 deleted: null 
               },
               skip,
@@ -157,7 +160,7 @@ companyRouter.get('/:companyId',async(req,res)=>{
         res.status(500).json({ error: "Internal server error" });
       }
 })
-companyRouter.put('/:companyId',async(req,res)=>{
+companyRouter.put('/:companyId',isRecruiter,async(req,res)=>{
     try {
         const companyId = req.params.companyId;
         const { name, email, website, logo, postlimit, blacklisted } = req.body;

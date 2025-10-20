@@ -11,6 +11,7 @@ import { jobtyperouter } from "./routes/jobstype"
 import { roleRouter } from "./routes/role"
 import { userRouter } from "./routes/user"
 import { userDetailsRouter } from "./routes/userDetails"
+import { isAdmin, isUser } from "./middleware/rolesMiddleware"
 const app=express()
 app.use(express.json({ limit: '500mb' }))
 app.use(express.urlencoded({ limit: '500mb', extended: true }))
@@ -34,9 +35,9 @@ app.use("/api/v1/users",userRouter)
 app.use('/api/v1/auth',authRouter) 
 app.use('/api/v1/userdetails',authMiddleware,userDetailsRouter) 
 app.use('/api/v1/roles',roleRouter)
-app.use('/api/v1/jobtype',authMiddleware,jobtyperouter) 
-app.use('/api/v1/companytype',authMiddleware    ,companyTypeRouter) 
-app.use('/api/v1/companysettings',authMiddleware,companySettingsRouter)
+app.use('/api/v1/jobtype',authMiddleware,isAdmin,jobtyperouter) 
+app.use('/api/v1/companytype',authMiddleware ,isAdmin,companyTypeRouter) 
+app.use('/api/v1/companysettings',authMiddleware,isAdmin,companySettingsRouter)
 app.use('/api/v1/company',authMiddleware,companyRouter) 
 app.use('/api/v1/job',authMiddleware,jobRouter)
 app.use('/api/v1/application',authMiddleware,applicationRouter)

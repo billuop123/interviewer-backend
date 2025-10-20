@@ -136,18 +136,18 @@ userRouter.put("/:userId", async (req, res) => {
         message: "User id is required",
       });
     }
-    const existingUser=await prisma.users.findFirst({
-        where:{
-            email,
-            id:{not :userId},
-            deleted:null
-        }
-    })
-    if(existingUser){
-        return res.status(403).json({
-            message:"Email is already in use!!"
-        })
-    }
+    // const existingUser=await prisma.users.findFirst({
+    //     where:{
+    //         email,
+    //         id:{not :userId},
+    //         deleted:null
+    //     }
+    // })
+    // if(existingUser){
+    //     return res.status(403).json({
+    //         message:"Email is already in use!!"
+    //     })
+    // }
     const user = await prisma.users.findUnique({
       where: {
         id: userId,

@@ -1,14 +1,64 @@
 import { Router } from "express";
 import { prisma } from "../utils/prismaClient";
-import { sanitize, uploadVideos } from "../utils/helperfunctions";
+import { runOpenAiPrompt, sanitize, streamOpenAiResponse, uploadVideos } from "../utils/helperfunctions";
 import { logError } from "../utils/logger";
 import { authMiddleware } from "../middleware/authMiddleware";
 import axios from "axios";
 import pdf from "pdf-parse";
-import OpenAI from "openai";
 import formidable from "formidable";
+import { isUser } from "../middleware/rolesMiddleware";
+import OpenAI from "openai";
 export const applicationRouter = Router();
-applicationRouter.post("/",async (req, res) => {
+
+applicationRouter.get("/user",authMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ error: "User not authenticated" });
+      return;
+    }
+
+    const limit = parseInt(req.query.limit as string) || 50;
+    const page = parseInt(req.query.page as string) || 1;
+    const skip = (page - 1) * limit;
+
+    const data = await prisma.applications.findMany({
+      where: { 
+        userid: userId,
+        deleted: null 
+      },
+      skip,
+      take: limit,
+      orderBy: { created: "desc" },
+      include: {
+        job: { 
+          select: { 
+            id: true, 
+            title: true,
+            description: true,
+            companyid: true,
+            company: {
+              select: {
+                id: true,
+                name: true,
+                logo: true
+              }
+            }
+          } 
+        },
+        user: { select: { id: true, email: true } },
+      },
+    });
+
+    res.json(sanitize(data));
+    return;
+  } catch (err: any) {
+    await logError("getUserApplications", err.message);
+    res.status(500).json({ error: "Internal server error" });
+    return;
+  }
+});
+applicationRouter.post("/",isUser,async (req, res) => {
   try {
     const userId=req.userId
     const { jobId, coverletter, notes } = req.body;
@@ -67,6 +117,13 @@ applicationRouter.post("/",async (req, res) => {
         notes,
       },
     });
+
+    // bump job applicationscount
+    await prisma.jobs.update({
+      where: { id: job.id },
+      data: { applicationscount: { increment: 1 } },
+    });
+
     // const emailTemplate=await prisma.emailtemplates.findUnique({
     //   where:{
     //     code:"JOB_APPLICATION_SUBMITTED",
@@ -210,6 +267,15 @@ applicationRouter.delete("/:applicationId", async (req, res) => {
       data: { deleted: new Date() },
     });
 
+    // decrement job applicationscount (not below zero)
+    const job = await prisma.jobs.findUnique({ where: { id: existing.jobid } });
+    if (job) {
+      await prisma.jobs.update({
+        where: { id: job.id },
+        data: { applicationscount: job.applicationscount > 0 ? { decrement: 1 } : undefined },
+      });
+    }
+
     res.json({ message: "Application soft-deleted successfully" });
     return;
   } catch (err: any) {
@@ -244,57 +310,6 @@ applicationRouter.get("/", async (req, res) => {
   }
 });
 
-applicationRouter.get("/user", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.userId;
-    
-    if (!userId) {
-      res.status(401).json({ error: "User not authenticated" });
-      return;
-    }
-
-    const limit = parseInt(req.query.limit as string) || 50;
-    const page = parseInt(req.query.page as string) || 1;
-    const skip = (page - 1) * limit;
-
-    const data = await prisma.applications.findMany({
-      where: { 
-        userid: userId,
-        deleted: null 
-      },
-      skip,
-      take: limit,
-      orderBy: { created: "desc" },
-      include: {
-        job: { 
-          select: { 
-            id: true, 
-            title: true,
-            description: true,
-            companyid: true,
-            company: {
-              select: {
-                id: true,
-                name: true,
-                logo: true
-              }
-            }
-          } 
-        },
-        user: { select: { id: true, email: true } },
-      },
-    });
-
-    res.json(sanitize(data));
-    return;
-  } catch (err: any) {
-    await logError("getUserApplications", err.message);
-    res.status(500).json({ error: "Internal server error" });
-    return;
-  }
-});
-
-// Get applications for a specific job (for job owners)
 applicationRouter.get("/job/:jobId", async (req, res) => {
   try {
     const jobId = req.params.jobId;
@@ -310,12 +325,11 @@ applicationRouter.get("/job/:jobId", async (req, res) => {
       return;
     }
 
-    // First, verify that the current user is the owner of this job
     const job = await prisma.jobs.findFirst({
       where: { 
         id: jobId, 
         deleted: null,
-        postedby: userId // Only allow job owner to see applications
+        postedby: userId 
       }
     });
 
@@ -483,124 +497,9 @@ applicationRouter.post("/chat/stream/:applicationId", async (req, res) => {
 });
 
 
-async function runOpenAiPrompt(prompt:any,resumeText:string,application:any){
-  console.log(prompt)
-  const client = new OpenAI   ();
-  const SystemPrompt = `You are a professional AI interviewer conducting a technical interview for a hiring company.
-
-CONTEXT:
-- Position: ${application.job.title}
-- Company: ${application.job.companyid ? `Company ID: ${application.job.companyid}` : 'Not specified'}
-- Job Description: ${application.job.description || 'Not provided'}
-- Location: ${application.job.location || 'Not specified'}
-- Remote: ${application.job.isremote ? 'Yes' : 'No'}
-- Salary Range: ${application.job.salarymin && application.job.salarymax ? `${application.job.salarymin} - ${application.job.salarymax} ${application.job.salarycurrency || ''}` : 'Not specified'}
-- Required Experience: ${application.job.experiencerequired || 'Not specified'}
-- Education Level: ${application.job.educationlevel || 'Not specified'}
-- Required Skills: ${application.job.skills || 'Not specified'}
-- Requirements: ${application.job.requirements || 'Not specified'}
-
-CANDIDATE INFORMATION:
-- Resume Content: ${resumeText}
-- Cover Letter: ${application.coverletter || 'Not provided'}
-- Additional Notes: ${application.notes || 'None'}
-
-INTERVIEW GUIDELINES:
-1. Conduct a professional, comprehensive interview with 10-15 technical questions and 2-3 personal/behavioral questions
-2. Ask ONE question at a time and wait for the candidate's response
-3. Provide brief, constructive feedback on answers before proceeding to the next question
-4. Focus questions on relevant skills, experience, and job requirements
-5. Keep responses concise and professional (2-3 sentences max)
-6. Do NOT number your questions or mention how many questions remain
-7. Adapt questions based on the candidate's background and the job requirements
-8. When you've asked sufficient questions (typically after 12-18 exchanges), respond with: "The interview is complete. You can now press the 'End Interview' button to finish."
-9. If the candidate continues talking after interview completion, politely remind them to end the interview
-
-Remember: Be professional, encouraging, and focused on evaluating the candidate's fit for the specific role.`
-  const response = await client.responses.create({
-        model: "gpt-4o-mini",
-        input: [
-          {
-            role: "system",
-            content:SystemPrompt
-          },
-          ...prompt.map((m:any) => ({
-            role: m.role,
-            content: m.content,
-          })),
-        ],
-      });
-    return response.output_text
-}
 
 
 
-async function streamOpenAiResponse(prompt: any, resumeText: string, application: any, res: any) {
-  const client = new OpenAI();
-
-  const SystemPrompt = `You are a professional AI interviewer conducting a technical interview for a hiring company.
-
-CONTEXT:
-- Position: ${application.job.title}
-- Company: ${application.job.companyid ? `Company ID: ${application.job.companyid}` : 'Not specified'}
-- Job Description: ${application.job.description || 'Not provided'}
-- Location: ${application.job.location || 'Not specified'}
-- Remote: ${application.job.isremote ? 'Yes' : 'No'}
-- Salary Range: ${application.job.salarymin && application.job.salarymax ? `${application.job.salarymin} - ${application.job.salarymax} ${application.job.salarycurrency || ''}` : 'Not specified'}
-- Required Experience: ${application.job.experiencerequired || 'Not specified'}
-- Education Level: ${application.job.educationlevel || 'Not specified'}
-- Required Skills: ${application.job.skills || 'Not specified'}
-- Requirements: ${application.job.requirements || 'Not specified'}
-
-CANDIDATE INFORMATION:
-- Resume Content: ${resumeText}
-- Cover Letter: ${application.coverletter || 'Not provided'}
-- Additional Notes: ${application.notes || 'None'}
-
-INTERVIEW GUIDELINES:
-1. Conduct a professional, comprehensive interview with 10-15 technical questions and 2-3 personal/behavioral questions
-2. Ask ONE question at a time and wait for the candidate's response
-3. Provide brief, constructive feedback on answers before proceeding to the next question
-4. Focus questions on relevant skills, experience, and job requirements
-5. Keep responses concise and professional (2-3 sentences max)
-6. Do NOT number your questions or mention how many questions remain
-7. Adapt questions based on the candidate's background and the job requirements
-8. When you've asked sufficient questions (typically after 12-18 exchanges), respond with: "The interview is complete. You can now press the 'End Interview' button to finish."
-9. If the candidate continues talking after interview completion, politely remind them to end the interview
-
-Remember: Be professional, encouraging, and focused on evaluating the candidate's fit for the specific role.`;
-
-  try {
-    const stream = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      stream: true,
-      messages: [
-        {
-          role: "system",
-          content: SystemPrompt,
-        },
-        ...prompt.map((m: any) => ({
-          role: m.role,
-          content: m.content,
-        })),
-      ],
-    });
-
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) {
-        res.write(`data: ${JSON.stringify({ content, isComplete: false })}\n\n`);
-      }
-    }
-
-    res.write(`data: ${JSON.stringify({ isComplete: true })}\n\n`);
-    res.end();
-  } catch (error) {
-    console.error("Streaming error:", error);
-    res.write(`data: ${JSON.stringify({ error: "Streaming failed" })}\n\n`);
-    res.end();
-  }
-}
 
 applicationRouter.post('/parseresume',async(req,res)=>{
   try{

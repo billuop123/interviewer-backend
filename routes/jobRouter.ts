@@ -195,6 +195,7 @@ jobRouter.put('/:jobId',async(req,res)=>{
       skills,
       isactive,
       isfeatured,
+      viewscount,
     } = req.body;
 
     const updated = await prisma.jobs.update({
@@ -218,6 +219,7 @@ jobRouter.put('/:jobId',async(req,res)=>{
         skills,
         isactive,
         isfeatured,
+        viewscount,
         updated: new Date(),
       },
     });
