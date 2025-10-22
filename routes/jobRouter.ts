@@ -259,6 +259,40 @@ jobRouter.delete('/:jobId',async(req,res)=>{
     res.status(500).json({ error: 'Internal server error' });
   }
 })
+jobRouter.put('/:jobId/views', async (req, res) => {
+  try {
+    const jobId = req.params.jobId;
+
+    if (!jobId) {
+      res.status(400).json({ error: 'Job ID is required' });
+      return;
+    }
+
+    const job = await prisma.jobs.findFirst({
+      where: { id: jobId, deleted: null },
+    });
+
+    if (!job) {
+      res.status(404).json({ error: 'Job not found' });
+      return;
+    }
+
+    // Increment the view count atomically
+    const updated = await prisma.jobs.update({
+      where: { id: jobId },
+      data: { 
+        viewscount: { increment: 1 },
+        updated: new Date(),
+      },
+    });
+
+    res.json({ viewscount: updated.viewscount });
+  } catch (err: any) {
+    await logError('incrementJobViews', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 jobRouter.get('/company/:companyId',async (req,res)=>{
   try {
     const companyId = req.params.companyId;

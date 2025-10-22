@@ -20,6 +20,8 @@ export async function authMiddleware(req:Request,res:Response,next:NextFunction)
         const decoded=jwt.verify(token!,process.env.JWT_SECRET!)as JwtPayload
         if(decoded?.userId!){
             req.userId=decoded.userId
+            req.roleCode=decoded.role
+      
             next()
         }
     }catch(e){

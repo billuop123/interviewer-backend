@@ -58,7 +58,7 @@ applicationRouter.get("/user",authMiddleware, async (req, res) => {
     return;
   }
 });
-applicationRouter.post("/",isUser,async (req, res) => {
+applicationRouter.post("/",authMiddleware,isUser,async (req, res) => {
   try {
     const userId=req.userId
     const { jobId, coverletter, notes } = req.body;

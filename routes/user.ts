@@ -98,7 +98,6 @@ userRouter.get("/", async (req, res) => {
 });
 userRouter.get("/:userId", async (req, res) => {
   try {
-    console.log(req.params.userId)
     const userId = req.params.userId;
     if (!userId) {
       return res.status(404).json({

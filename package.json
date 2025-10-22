@@ -21,6 +21,7 @@
     "@types/formidable": "^3.4.5",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/pdf-parse": "^1.1.5",
+    "@types/ws": "^8.18.1",
     "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.7.0",
@@ -33,6 +34,7 @@
     "openai": "^5.21.0",
     "pdf-parse": "^1.1.1",
     "prisma": "^6.16.2",
+    "ws": "^8.18.3",
     "zod": "^4.1.9"
   }
 }

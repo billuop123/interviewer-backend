@@ -12,6 +12,7 @@
         "@types/formidable": "^3.4.5",
         "@types/jsonwebtoken": "^9.0.10",
         "@types/pdf-parse": "^1.1.5",
+        "@types/ws": "^8.18.1",
         "axios": "^1.12.2",
         "bcryptjs": "^3.0.2",
         "cloudinary": "^2.7.0",
@@ -24,6 +25,7 @@
         "openai": "^5.21.0",
         "pdf-parse": "^1.1.1",
         "prisma": "^6.16.2",
+        "ws": "^8.18.3",
         "zod": "^4.1.9",
       },
       "devDependencies": {
@@ -94,6 +96,8 @@
     "@types/send": ["@types/send@0.17.5", "", { "dependencies": { "@types/mime": "^1", "@types/node": "*" } }, "sha512-z6F2D3cOStZvuk2SaP6YrwkNO65iTZcwA2ZkSABegdkAh/lf+Aa/YQndZVfmEXT5vgAp6zv06VQ3ejSVjAny4w=="],
 
     "@types/serve-static": ["@types/serve-static@1.15.8", "", { "dependencies": { "@types/http-errors": "*", "@types/node": "*", "@types/send": "*" } }, "sha512-roei0UY3LhpOJvjbIP6ZZFngyLKl5dskOtDhxY5THRSpO+ZI+nzJ+m5yUMzGrp89YRa7lvknKkMYjqQFGwA7Sg=="],
+
+    "@types/ws": ["@types/ws@8.18.1", "", { "dependencies": { "@types/node": "*" } }, "sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg=="],
 
     "accepts": ["accepts@2.0.0", "", { "dependencies": { "mime-types": "^3.0.0", "negotiator": "^1.0.0" } }, "sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng=="],
 
