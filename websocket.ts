@@ -57,6 +57,17 @@ export function initializeWebSocket(server: any) {
                 }))
                 return true;
             }
+            if(parsedData.event==='notify'){
+                wss.clients.forEach(function each(ws) {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                            event:'notify',
+                            applicationId:parsedData.applicationId,
+                        }))
+                    }
+                });
+                return true;
+            }
         });
         ws.on('close', function close(code, reason) {
             connectedUsers=connectedUsers.filter(user=>user.websocket!==ws);

@@ -40,7 +40,6 @@ app.use('/api/v1/error',errorRouter)
 
 export const httpserver=app.listen(2000, () => {
     console.log('Server running on port 2000')
-    // Initialize WebSocket server after HTTP server is created
     initializeWebSocket(httpserver)
 });
 
