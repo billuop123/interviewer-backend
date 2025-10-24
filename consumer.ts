@@ -102,8 +102,7 @@ Provide a fair, objective assessment based on the candidate's demonstrated abili
       score: scoreMatch ? parseFloat(scoreMatch[1]) : 0,
       reasoning: reasoningMatch ? reasoningMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n') : "Unable to parse reasoning from AI response"
     };
-    
-    console.log("Using fallback parsing:", parsedResponse);
+
   }
   return {
     score: parsedResponse.score,
@@ -118,7 +117,6 @@ async function main() {
     fromBeginning: true
   });
 
-  console.log("🚀 Interview processor started, waiting for messages...");
 
   await consumer.run({
     eachMessage: async ({ topic, partition, message }) => {
@@ -126,8 +124,7 @@ async function main() {
       
       try {
         data = JSON.parse(message.value?.toString() || "{}");
-        console.log(`📝 Processing interview for application: ${data.applicationId}`);
-        console.log(data);
+
         
         // Process interview with AI
         const aiResponse = await processInterviewWithAI(data);
@@ -152,10 +149,6 @@ async function main() {
           }
         });
         
-        console.log(`✅ Interview processed successfully for application: ${data.applicationId}`);
-        console.log(`📊 Score: ${aiResponse.score}/10`);
-        
-        // Send WebSocket notification to user
         await notifyUser(data.applicationId, data.userId);
         
       } catch (error) {
@@ -171,7 +164,6 @@ async function main() {
                 relevancecomment: "Error occurred during processing. Please contact support.",
               }
             });
-            console.log(`⚠️ Saved error state for application: ${data.applicationId}`);
           } catch (dbError) {
             console.error("❌ Failed to save error state:", dbError);
           }

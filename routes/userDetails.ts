@@ -268,7 +268,6 @@ userDetailsRouter.delete('/deleteuserdetail/:userId',async (req,res)=>{
         message:"User details soft-deleted successfully"
     })
     }catch(e:any){  
-        console.log(e.message)
         await logError('softDeleteUserDetails',e.message)
         return res.status(500).json({
             message:'Internal server error'

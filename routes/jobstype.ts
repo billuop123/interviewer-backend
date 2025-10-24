@@ -3,12 +3,13 @@ import {z} from "zod"
 import { prisma } from "../utils/prismaClient"
 import { sanitize } from "../utils/helperfunctions"
 import { logError } from "../utils/logger"
+import { isAdmin, isRecruiter } from "../middleware/rolesMiddleware"
 export const jobtyperouter=Router()
 const createJobInputs=z.object({
     name:z.string(),
     description:z.string()
 })
-jobtyperouter.post('/',async (req,res)=>{
+jobtyperouter.post('/',isRecruiter,async (req,res)=>{
     try{
         const body=req.body
         const parsedBody=createJobInputs.safeParse(body)
@@ -41,7 +42,7 @@ jobtyperouter.post('/',async (req,res)=>{
         })
     }
 })
-jobtyperouter.get('/getAllJobs',async (req,res)=>{
+jobtyperouter.get('/getAllJobs',isAdmin,async (req,res)=>{
     try{
         const allJobs=await prisma.jobtypes.findMany({
             where:{
@@ -59,7 +60,7 @@ jobtyperouter.get('/getAllJobs',async (req,res)=>{
         })
     }
 })
-jobtyperouter.get('/getjob/:jobtypeId',async(req,res)=>{
+jobtyperouter.get('/getjob/:jobtypeId',isAdmin,async(req,res)=>{
     try{
         const jobtypeId=req.params.jobtypeId
         if(!jobtypeId){
@@ -89,7 +90,7 @@ jobtyperouter.get('/getjob/:jobtypeId',async(req,res)=>{
         })
     }
 })
-jobtyperouter.put('/updatejobtype/:jobtypeid',async (req,res)=>{
+jobtyperouter.put('/updatejobtype/:jobtypeid',isAdmin,async (req,res)=>{
     try {
         const jobtypeid = req.params.jobtypeid;
         const { name, description } = req.body;
@@ -127,7 +128,7 @@ jobtyperouter.put('/updatejobtype/:jobtypeid',async (req,res)=>{
         res.status(500).json({ message: 'Internal server error' });
       }
 })
-jobtyperouter.delete('/:jobtypeid',async(req,res)=>{
+jobtyperouter.delete('/:jobtypeid',isAdmin,async(req,res)=>{
     try {
         const jobtypeid = req.params.jobtypeid;
     

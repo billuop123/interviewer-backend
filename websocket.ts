@@ -42,12 +42,21 @@ export function initializeWebSocket(server: any) {
                 return true;
             }
             if(parsedData.event==='leave'){
+                const leavingUser = connectedUsers.find(user=>user.websocket===ws);
                 connectedUsers=connectedUsers.filter(user=>user.websocket!==ws);
-                ws.send(JSON.stringify({
-                    event:'left',
-                    userId:parsedData.userId,
-                    jobId:parsedData.jobId,
-                }))
+                console.log('User left:', leavingUser?.name, 'Remaining users:', connectedUsers.length);
+                
+                // Notify all clients about the user leaving
+                wss.clients.forEach(function each(client) {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({
+                            event:'left',
+                            userId:leavingUser?.userId,
+                            jobId:leavingUser?.jobId,
+                            name:leavingUser?.name,
+                        }))
+                    }
+                });
                 return true;
             }   
             if(parsedData.event==='getconnectedusers'){
@@ -70,12 +79,18 @@ export function initializeWebSocket(server: any) {
             }
         });
         ws.on('close', function close(code, reason) {
+            const leavingUser = connectedUsers.find(user=>user.websocket===ws);
             connectedUsers=connectedUsers.filter(user=>user.websocket!==ws);
-            wss.clients.forEach(function each(ws) {
-                if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({
+            console.log('Connection closed for user:', leavingUser?.name, 'Remaining users:', connectedUsers.length);
+            
+            // Notify all remaining clients about the user leaving
+            wss.clients.forEach(function each(client) {
+                if (client.readyState === WebSocket.OPEN && client !== ws) {
+                    client.send(JSON.stringify({
                         event:'left',
-                        websocket:ws,
+                        userId:leavingUser?.userId,
+                        jobId:leavingUser?.jobId,
+                        name:leavingUser?.name,
                     }))
                 }
             });
