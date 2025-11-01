@@ -174,7 +174,7 @@ async function main() {
     },
   });
 }
-const WEBSOCKET_URL=`ws://localhost:2000`
+const WEBSOCKET_URL=`ws://localhost:3000`
 async function notifyUser(applicationId:string,userId:string){
   try {
     const socket=new WebSocket(WEBSOCKET_URL)
