@@ -1,5 +1,5 @@
 # dependencies (bun install)
-
+node_modules
 # output
 out
 dist
@@ -32,4 +32,3 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Finder (MacOS) folder config
 .DS_Store
 
-node_modules
