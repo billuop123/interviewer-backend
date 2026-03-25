@@ -62,14 +62,12 @@ userDetailsRouter.post("/",async (req,res)=>{
                 }
                 
                 let details;
-                // Check for phone number conflicts (for both create and update)
                 if(phone){
-                    const existingPhone=await prisma.userdetails.findUnique({
+                    const existingPhone=await prisma.userdetails.findFirst({
                         where:{
-                            phone
+                            phone:phone 
                         }
                     })
-                    // If phone exists and it's not the current user's phone
                     if(existingPhone && existingPhone.userId !== user.id){
                         return res.status(400).json({
                             message:"Phone number is already in use by another user"
@@ -78,7 +76,6 @@ userDetailsRouter.post("/",async (req,res)=>{
                 }
 
                 if(existingDetails){
-                    // Update existing user details
                     details = await prisma.userdetails.update({
                         where: {
                             id: existingDetails.id
@@ -86,7 +83,7 @@ userDetailsRouter.post("/",async (req,res)=>{
                         data: {
                             experience: parseInt(experience),
                             phone,
-                            resumelink: resumelink || existingDetails.resumelink, // Keep existing if no new file
+                            resumelink: resumelink || existingDetails.resumelink, 
                             skills, 
                             location,
                             bio,
@@ -98,7 +95,6 @@ userDetailsRouter.post("/",async (req,res)=>{
                         },
                     })
                 } else {
-                    // Create new user details
                     details = await prisma.userdetails.create({
                         data: {
                           userId: user.id,
@@ -124,8 +120,6 @@ userDetailsRouter.post("/",async (req,res)=>{
         })
     }catch(e:any){
         await logError("createUserDetails",e.message)
-        
-        // Handle Prisma unique constraint errors
         if(e.code === 'P2002'){
             const field = e.meta?.target?.[0] || 'field'
             return res.status(400).json({

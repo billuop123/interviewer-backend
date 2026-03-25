@@ -13,8 +13,6 @@ const openai = new OpenAI();
 
 async function processInterviewWithAI(data: any) {
   const { resumeText, messageHistory, applicationId } = data;
-  
-  // Get application details
   const application = await prisma.applications.findUnique({
     where: { id: applicationId },
     include: {
@@ -75,17 +73,14 @@ Provide a fair, objective assessment based on the candidate's demonstrated abili
     ]
   });
 
-  // Parse AI response
   let jsonText = response.choices[0].message.content?.trim() || "";
   
-  // Remove markdown code blocks if present
   if (jsonText.startsWith('```json')) {
     jsonText = jsonText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
   } else if (jsonText.startsWith('```')) {
     jsonText = jsonText.replace(/^```\s*/, '').replace(/\s*```$/, '');
   }
   
-  // Parse the cleaned JSON with error handling
   let parsedResponse;
   try {
     parsedResponse = JSON.parse(jsonText);
@@ -93,9 +88,7 @@ Provide a fair, objective assessment based on the candidate's demonstrated abili
     console.error("Failed to parse AI response as JSON:", jsonText);
     console.error("Parse error:", parseError);
     
-    // Fallback: try to extract score and reasoning using regex
     const scoreMatch = jsonText.match(/"score":\s*(\d+(?:\.\d+)?)/);
-    // More flexible reasoning match to handle escaped quotes and multiline text
     const reasoningMatch = jsonText.match(/"reasoning":\s*"((?:[^"\\]|\\.)*)"/);
     
     parsedResponse = {
@@ -124,12 +117,7 @@ async function main() {
       
       try {
         data = JSON.parse(message.value?.toString() || "{}");
-
-        
-        // Process interview with AI
         const aiResponse = await processInterviewWithAI(data);
-        
-        // Validate the response before saving
         if (typeof aiResponse.score !== 'number' || aiResponse.score < 0 || aiResponse.score > 10) {
           console.warn(`⚠️ Invalid score received: ${aiResponse.score}, using default`);
           aiResponse.score = 0;
@@ -139,13 +127,12 @@ async function main() {
           console.warn(`⚠️ Invalid reasoning received, using default`);
           aiResponse.reasoning = "Unable to generate proper assessment";
         }
-        
-        // Save results to database
         await prisma.applications.update({
           where: { id: data.applicationId },
           data: {
             relevancescore: aiResponse.score,
             relevancecomment: aiResponse.reasoning,
+            ...(data.videoLink && { videolink: data.videoLink }),
           }
         });
         
@@ -153,8 +140,6 @@ async function main() {
         
       } catch (error) {
         console.error("❌ Error processing interview:", error);
-        
-        // Try to save error state to database if we have the data
         if (data && data.applicationId) {
           try {
             await prisma.applications.update({
@@ -168,8 +153,6 @@ async function main() {
             console.error("❌ Failed to save error state:", dbError);
           }
         }
-        
-        // TODO: Implement retry logic or dead letter queue
       }
     },
   });
@@ -192,7 +175,6 @@ async function notifyUser(applicationId:string,userId:string){
       console.error("WebSocket notification error:", error)
     }
     
-    // Close connection after 5 seconds if not already closed
     setTimeout(() => {
       if (socket.readyState === WebSocket.OPEN) {
         socket.close()

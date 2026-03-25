@@ -108,7 +108,6 @@ router.get('/google/callback', async (req, res) => {
         if (!clientId || !clientSecret) {
             return res.status(500).json({ message: 'Google OAuth not configured' })
         }
-        // Exchange code for tokens
         const tokenResponse = await axios.post(
             'https://oauth2.googleapis.com/token',
             new URLSearchParams({
@@ -126,7 +125,6 @@ router.get('/google/callback', async (req, res) => {
             return res.status(400).json({ message: 'No id_token returned by Google' })
         }
 
-        // Verify id token using tokeninfo endpoint (avoids extra libs)
         const infoResp = await axios.get('https://oauth2.googleapis.com/tokeninfo', { params: { id_token: idToken } })
         const info = infoResp.data as any
 
@@ -140,7 +138,6 @@ router.get('/google/callback', async (req, res) => {
         const email = info.email as string
         const name = (info.name as string) || (info.given_name as string) || 'User'
 
-        // Find or create user
         let user = await prisma.users.findUnique({
             where: { email, deleted: null },
             include: {
@@ -150,7 +147,6 @@ router.get('/google/callback', async (req, res) => {
         })
 
         if (!user) {
-            // Get USER role
             const role = await prisma.roles.findUnique({ where: { name: 'USER' } })
             if (!role) {
                 return res.status(500).json({ message: 'Default role USER not found' })
@@ -178,7 +174,6 @@ router.get('/google/callback', async (req, res) => {
             companyId: user.companyId || null
         }, process.env.JWT_SECRET!, { expiresIn: '7d' })
 
-        // Redirect back to frontend carrying the JWT as a URL fragment
         const redirectUrl = `${frontendRedirect}?token=${encodeURIComponent(token)}`
         return res.redirect(redirectUrl)
     } catch (e: any) {

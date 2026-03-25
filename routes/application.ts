@@ -873,6 +873,22 @@ applicationRouter.post('/:applicationId/submit',async(req,res)=>{
         }
       }
 
+      // Save video link to database immediately (if video was uploaded)
+      if (videoLink) {
+        try {
+          await prisma.applications.update({
+            where: { id: applicationId },
+            data: {
+              videolink: videoLink
+            }
+          })
+          console.log(`Video link saved to database for application ${applicationId}`)
+        } catch (dbError: any) {
+          console.error('Error saving video link to database:', dbError.message)
+          // Don't fail the request if video link save fails, continue with Kafka
+        }
+      }
+
       await producer.connect();
       await producer.send({
         topic: "application-submission",
@@ -886,40 +902,6 @@ applicationRouter.post('/:applicationId/submit',async(req,res)=>{
           })
         }]
       });
-//       const application=await prisma.applications.findUnique({
-//         where:{id:applicationId},
-//         include:{
-//           job:{
-//             select:{
-//               title:true,
-//               description:true,
-//               companyid:true,
-//               jobtypeid:true,
-//               location:true,
-//               isremote:true,
-//               salarymin:true,
-//               salarymax:true,
-//               salarycurrency:true,
-//               requirements:true,
-//               responsibilities:true,
-//               benefits:true,
-//               applicationUrl:true,
-//               experiencerequired:true,
-//               educationlevel:true,
-//               skills:true
-//             }
-//           }
-//         }
-//       })
-//       if(!application){
-//         return res.status(404).json({message:"Application not found"})
-//       }
-//       const updatedApplication=await prisma.applications.update({
-//         where:{id:applicationId},
-//         data:{
-//           videolink:videoLink // Will be null if no video was provided
-//         }
-//       })
 //       const SystemPrompt = `You are an expert hiring manager evaluating a candidate's interview performance and resume for job suitability.
 
 // EVALUATION TASK:
